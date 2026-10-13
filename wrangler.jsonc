@@ -13,7 +13,7 @@
     {
       "binding": "DB",
       "database_name": "smart-cb-db",
-      "database_id": "REPLACE_WITH_D1_DATABASE_ID",
+      "database_id": "0a35bded-a03d-456c-a3ad-ff7c9382ba83",
       "migrations_dir": "migrations"
     }
   ],

@@ -95,6 +95,15 @@ describe("Smart CB lifecycle", () => {
     deviceKey = data.apiKey;
     expect(deviceId).toMatch(/^dev_/);
     expect(deviceKey.length).toBeGreaterThan(32);
+
+    const nodes = await env.DB.prepare(
+      `SELECT code, slave_id, baud_rate, serial_config
+       FROM modbus_nodes WHERE gateway_device_id = ? ORDER BY slave_id`,
+    ).bind(deviceId).all<Record<string, unknown>>();
+    expect(nodes.results).toEqual([
+      { code: "MTS5", slave_id: 1, baud_rate: 9600, serial_config: "8E1" },
+      { code: "PM3C92", slave_id: 2, baud_rate: 9600, serial_config: "8N1" },
+    ]);
   });
 
   it("accepts device telemetry", async () => {

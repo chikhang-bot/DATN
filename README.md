@@ -19,6 +19,15 @@ Browser ──HTTPS──> Cloudflare Worker (TypeScript) ──SQL──> D1
 - `test/`: kiểm thử vòng đời đầy đủ từ setup đến hoàn tất lệnh.
 - `docs/openapi.yaml`: hợp đồng REST API.
 
+### Mô hình dữ liệu D1
+
+- `devices` là gateway ESP32-S3 đã xác thực bằng API key.
+- `modbus_nodes` là các thiết bị vật lý phía sau gateway, mặc định gồm MTS5 slave 1/8E1 và PM3C-92 slave 2/8N1.
+- `device_models`, `register_maps`, `command_maps` lưu danh mục model, thanh ghi đọc và lệnh ghi Modbus.
+- `telemetry` giữ mẫu đo đã chuẩn hóa theo dạng cột để dashboard truy vấn nhanh.
+- `alarm_rules`, `alarm_events` lưu cấu hình và lịch sử cảnh báo.
+- `commands`, `audit_logs` tiếp tục quản lý hàng đợi đóng/cắt và nhật ký bảo mật.
+
 ## Chạy local
 
 Yêu cầu Node.js 20+.

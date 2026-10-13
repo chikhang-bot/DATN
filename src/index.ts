@@ -107,6 +107,8 @@ async function routeApi(request: Request, env: Env, url: URL): Promise<Response>
       const name = cleanText(body.name, "Tên thiết bị", 2, 80);
       const location = typeof body.location === "string" ? body.location.trim().slice(0, 160) : "";
       const id = randomId("dev");
+      const mts5NodeId = randomId("node");
+      const pm3NodeId = randomId("node");
       const apiKey = randomToken(32);
       const now = Date.now();
       await env.DB.batch([
@@ -114,6 +116,20 @@ async function routeApi(request: Request, env: Env, url: URL): Promise<Response>
           `INSERT INTO devices (id, name, location, api_key_hash, created_at, updated_at)
            VALUES (?, ?, ?, ?, ?, ?)`,
         ).bind(id, name, location, await sha256(apiKey), now, now),
+        env.DB.prepare(
+          `INSERT INTO modbus_nodes
+             (id, gateway_device_id, device_model_id, code, name, slave_id, baud_rate,
+              serial_config, description, created_at, updated_at)
+           VALUES (?, ?, 'model_mts5', 'MTS5', 'MTS5(LE)', 1, 9600, '8E1',
+                   'Circuit breaker on shared RS485 bus', ?, ?)`,
+        ).bind(mts5NodeId, id, now, now),
+        env.DB.prepare(
+          `INSERT INTO modbus_nodes
+             (id, gateway_device_id, device_model_id, code, name, slave_id, baud_rate,
+              serial_config, description, created_at, updated_at)
+           VALUES (?, ?, 'model_pm3c92', 'PM3C92', 'PM3C-92', 2, 9600, '8N1',
+                   'Three-phase meter on shared RS485 bus', ?, ?)`,
+        ).bind(pm3NodeId, id, now, now),
         audit(env, "USER", user.id, "DEVICE_CREATED", "DEVICE", id, { name, location }, now),
       ]);
       return json({ device: { id, name, location }, apiKey }, 201);
