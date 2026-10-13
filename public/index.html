@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#07111f" />
+    <meta name="description" content="Bảng điều khiển và giám sát Smart CB" />
+    <title>Smart CB · Điều khiển an toàn</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./theme.css" />
+    <script src="./app.js" defer></script>
+  </head>
+  <body>
+    <div class="noise" aria-hidden="true"></div>
+    <div id="preview-banner" class="preview-banner hidden" role="status">
+      <strong>CHẾ ĐỘ XEM THỬ</strong>
+      <span>Dữ liệu mẫu · chạy <code>npm run dev</code> để kết nối API thật</span>
+    </div>
+
+    <main id="auth-view" class="auth-shell hidden">
+      <section class="auth-brand">
+        <div class="brand-lockup">
+          <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span>SMART CB</span>
+        </div>
+        <div class="auth-copy">
+          <p class="eyebrow">GIÁM SÁT ĐIỆN NĂNG · ĐIỀU KHIỂN TỪ XA</p>
+          <h1>Điện trong tầm nhìn.<br /><em>An toàn trong tầm tay.</em></h1>
+          <p class="lede">Theo dõi PM3C-92 và điều khiển MTS5 qua một đường truyền HTTPS bảo mật.</p>
+        </div>
+        <div class="signal-card" aria-hidden="true">
+          <div class="signal-head"><span>GRID SIGNAL</span><span class="live-dot">LIVE</span></div>
+          <svg viewBox="0 0 640 130" preserveAspectRatio="none">
+            <defs><linearGradient id="wave" x1="0" x2="1"><stop stop-color="#35e6b2"/><stop offset="1" stop-color="#92ff72"/></linearGradient></defs>
+            <path class="grid-line" d="M0 26H640M0 65H640M0 104H640" />
+            <path class="signal-line" d="M0 81 C30 81 34 22 70 22 S108 107 145 107 184 40 220 40 255 87 292 87 330 15 369 15 407 100 444 100 480 50 516 50 553 75 588 75 613 35 640 35" />
+          </svg>
+        </div>
+      </section>
+
+      <section class="auth-panel">
+        <form id="login-form" class="auth-form hidden">
+          <p class="section-kicker">TRUNG TÂM ĐIỀU KHIỂN</p>
+          <h2>Đăng nhập</h2>
+          <p class="muted">Dùng tài khoản được quản trị viên cấp.</p>
+          <label>Email<input name="email" type="email" autocomplete="username" required placeholder="ban@congty.vn" /></label>
+          <label>Mật khẩu<input name="password" type="password" autocomplete="current-password" required minlength="10" /></label>
+          <button class="button primary wide" type="submit"><span>Đăng nhập</span><span aria-hidden="true">→</span></button>
+          <p id="login-error" class="form-error" role="alert"></p>
+        </form>
+
+        <form id="setup-form" class="auth-form hidden">
+          <p class="section-kicker">KHỞI TẠO LẦN ĐẦU</p>
+          <h2>Tạo quản trị viên</h2>
+          <p class="muted">Nhập <code>SETUP_TOKEN</code> đã cấu hình trong Worker.</p>
+          <label>Tên hiển thị<input name="displayName" required minlength="2" placeholder="Quản trị viên" /></label>
+          <label>Email<input name="email" type="email" autocomplete="username" required placeholder="admin@congty.vn" /></label>
+          <label>Mật khẩu<input name="password" type="password" autocomplete="new-password" required minlength="10" placeholder="Tối thiểu 10 ký tự" /></label>
+          <label>Mã khởi tạo<input name="setupToken" type="password" required /></label>
+          <button class="button primary wide" type="submit"><span>Khởi tạo hệ thống</span><span aria-hidden="true">→</span></button>
+          <p id="setup-error" class="form-error" role="alert"></p>
+        </form>
+      </section>
+    </main>
+
+    <div id="app-view" class="app-shell hidden">
+      <aside class="sidebar">
+        <div class="brand-lockup"><span class="brand-mark"><i></i><i></i><i></i></span><span>SMART CB</span></div>
+        <nav aria-label="Điều hướng chính">
+          <button class="nav-item active" data-section="overview"><span>◫</span>Tổng quan</button>
+          <button class="nav-item" data-section="history"><span>↺</span>Lịch sử lệnh</button>
+          <button class="nav-item admin-only" data-section="settings"><span>⌘</span>Thiết lập</button>
+        </nav>
+        <div class="sidebar-foot">
+          <div class="system-pill"><i></i><span>Cloudflare Online</span></div>
+          <button id="logout-button" class="nav-item subtle"><span>↪</span>Đăng xuất</button>
+        </div>
+      </aside>
+
+      <main class="workspace">
+        <header class="topbar">
+          <button id="menu-button" class="icon-button menu-button" aria-label="Mở trình đơn">☰</button>
+          <div>
+            <p class="breadcrumb">HỆ THỐNG / <span id="page-breadcrumb">TỔNG QUAN</span></p>
+            <h1 id="page-title">Trung tâm điều khiển</h1>
+          </div>
+          <div class="top-actions">
+            <div class="live-chip"><i></i><span>LIVE DATA</span></div>
+            <div class="clock"><span id="current-date"></span><strong id="current-time"></strong></div>
+            <div class="user-chip"><span id="user-initial">A</span><div><strong id="user-name">Admin</strong><small id="user-role">Quản trị viên</small></div></div>
+          </div>
+        </header>
+
+        <section id="overview-section" class="page-section">
+          <div class="status-strip">
+            <div><span class="status-dot" id="fleet-dot"></span><strong id="fleet-status">Đang đồng bộ</strong><small>TRẠNG THÁI HỆ THỐNG</small></div>
+            <div><strong id="device-count">—</strong><small>THIẾT BỊ</small></div>
+            <div><strong id="last-sync">—</strong><small>CẬP NHẬT GẦN NHẤT</small></div>
+            <label class="device-picker">THIẾT BỊ<select id="device-select"></select></label>
+          </div>
+
+          <div class="hero-grid">
+            <article class="breaker-card panel">
+              <div class="panel-head"><div><p class="section-kicker">CIRCUIT BREAKER</p><h2 id="selected-device-name">Chưa có thiết bị</h2></div><span id="online-badge" class="badge neutral">OFFLINE</span></div>
+              <div class="breaker-visual">
+                <div id="breaker-switch" class="breaker-switch unknown"><span class="rail"></span><span class="lever"></span><span class="terminal top"></span><span class="terminal bottom"></span></div>
+                <div class="breaker-copy"><p>TRẠNG THÁI HIỆN TẠI</p><strong id="breaker-state">KHÔNG XÁC ĐỊNH</strong><small id="device-location">—</small></div>
+              </div>
+              <div class="control-row">
+                <button id="open-button" class="button danger" disabled><span>NGẮT CB</span><small>OPEN</small></button>
+                <button id="close-button" class="button success" disabled><span>ĐÓNG CB</span><small>CLOSE</small></button>
+              </div>
+              <p id="command-state" class="command-state">Không có lệnh đang chờ</p>
+            </article>
+
+            <section class="metrics-grid" aria-label="Thông số điện">
+              <article class="metric panel accent-mint"><div class="metric-icon">V</div><p>ĐIỆN ÁP</p><strong><span id="metric-voltage">—</span><small>V</small></strong><span id="voltage-note">Chờ dữ liệu</span></article>
+              <article class="metric panel accent-blue"><div class="metric-icon">A</div><p>DÒNG ĐIỆN</p><strong><span id="metric-current">—</span><small>A</small></strong><span>Tải hiện tại</span></article>
+              <article class="metric panel accent-yellow"><div class="metric-icon">P</div><p>CÔNG SUẤT</p><strong><span id="metric-power">—</span><small>kW</small></strong><span>Công suất tác dụng</span></article>
+              <article class="metric panel accent-purple"><div class="metric-icon">Σ</div><p>ĐIỆN NĂNG</p><strong><span id="metric-energy">—</span><small>kWh</small></strong><span>Tổng tích lũy</span></article>
+            </section>
+          </div>
+
+          <div class="content-grid">
+            <article class="chart-panel panel">
+              <div class="panel-head"><div><p class="section-kicker">DỮ LIỆU THỜI GIAN THỰC</p><h2>Biểu đồ điện năng</h2></div><div class="legend"><span><i class="mint"></i>Điện áp</span><span><i class="blue"></i>Dòng điện</span></div></div>
+              <div class="chart-wrap"><canvas id="telemetry-chart" aria-label="Biểu đồ điện áp và dòng điện"></canvas><div id="chart-empty" class="chart-empty">Chưa có dữ liệu đo</div></div>
+            </article>
+            <article class="details-panel panel">
+              <div class="panel-head"><div><p class="section-kicker">THIẾT BỊ</p><h2>Chi tiết kết nối</h2></div></div>
+              <dl>
+                <div><dt>Mã thiết bị</dt><dd id="detail-id">—</dd></div>
+                <div><dt>Firmware</dt><dd id="detail-firmware">—</dd></div>
+                <div><dt>Tần số</dt><dd id="detail-frequency">—</dd></div>
+                <div><dt>Hệ số công suất</dt><dd id="detail-pf">—</dd></div>
+                <div><dt>Nhiệt độ</dt><dd id="detail-temp">—</dd></div>
+                <div><dt>PM3C-92</dt><dd id="detail-pm3">—</dd></div>
+                <div><dt>MTS5</dt><dd id="detail-mts5">—</dd></div>
+                <div><dt>MTS5 status RAW</dt><dd id="detail-status-raw">—</dd></div>
+                <div><dt>Điều khiển từ xa</dt><dd id="detail-remote-control">—</dd></div>
+                <div><dt>Lần cuối kết nối</dt><dd id="detail-last-seen">—</dd></div>
+              </dl>
+            </article>
+          </div>
+
+          <article class="phase-panel panel">
+            <div class="panel-head"><div><p class="section-kicker">PM3C-92 · BA PHA</p><h2>Thông số chi tiết theo pha</h2></div><span class="source-note">FC04 · ID 2 · 9600 8N1</span></div>
+            <div class="phase-table-wrap">
+              <table class="phase-table">
+                <thead><tr><th>Thông số</th><th>Pha A</th><th>Pha B</th><th>Pha C</th><th>Tổng / trung bình</th></tr></thead>
+                <tbody>
+                  <tr><td>Điện áp pha</td><td id="phase-va">—</td><td id="phase-vb">—</td><td id="phase-vc">—</td><td id="phase-vavg">—</td></tr>
+                  <tr><td>Dòng điện</td><td id="phase-ia">—</td><td id="phase-ib">—</td><td id="phase-ic">—</td><td id="phase-iavg">—</td></tr>
+                  <tr><td>Công suất tác dụng</td><td id="phase-pa">—</td><td id="phase-pb">—</td><td id="phase-pc">—</td><td id="phase-ptotal">—</td></tr>
+                  <tr><td>Công suất phản kháng</td><td id="phase-qa">—</td><td id="phase-qb">—</td><td id="phase-qc">—</td><td id="phase-qtotal">—</td></tr>
+                  <tr><td>Công suất biểu kiến</td><td id="phase-sa">—</td><td id="phase-sb">—</td><td id="phase-sc">—</td><td id="phase-stotal">—</td></tr>
+                  <tr><td>Hệ số công suất</td><td id="phase-pfa">—</td><td id="phase-pfb">—</td><td id="phase-pfc">—</td><td id="phase-pfavg">—</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="line-voltage-row"><span>Điện áp dây</span><strong>AB <b id="line-vab">—</b></strong><strong>BC <b id="line-vbc">—</b></strong><strong>CA <b id="line-vca">—</b></strong><strong>Thứ tự pha <b id="phase-sequence">—</b></strong></div>
+          </article>
+        </section>
+
+        <section id="history-section" class="page-section hidden">
+          <div class="section-heading"><div><p class="section-kicker">NHẬT KÝ ĐIỀU KHIỂN</p><h2>Lịch sử lệnh</h2></div><button id="refresh-history" class="button ghost">Làm mới</button></div>
+          <div class="table-panel panel"><div class="table-scroll"><table><thead><tr><th>Thời gian</th><th>Thiết bị</th><th>Lệnh</th><th>Trạng thái</th><th>Người gửi</th><th>Kết quả</th></tr></thead><tbody id="history-body"></tbody></table></div></div>
+        </section>
+
+        <section id="settings-section" class="page-section hidden">
+          <div class="section-heading"><div><p class="section-kicker">QUẢN TRỊ</p><h2>Thiết bị & tài khoản</h2></div></div>
+          <div class="settings-grid">
+            <form id="device-form" class="panel form-panel">
+              <p class="section-kicker">THÊM ESP32-S3</p><h3>Đăng ký thiết bị</h3>
+              <label>Tên thiết bị<input name="name" required minlength="2" placeholder="Tủ điện tầng 1" /></label>
+              <label>Vị trí<input name="location" placeholder="Xưởng A" /></label>
+              <button class="button primary" type="submit">Tạo khóa thiết bị</button>
+              <p id="device-form-error" class="form-error"></p>
+            </form>
+            <form id="user-form" class="panel form-panel">
+              <p class="section-kicker">PHÂN QUYỀN</p><h3>Tạo người dùng</h3>
+              <label>Tên hiển thị<input name="displayName" required minlength="2" /></label>
+              <label>Email<input name="email" type="email" required /></label>
+              <label>Mật khẩu tạm<input name="password" type="password" required minlength="10" /></label>
+              <label>Vai trò<select name="role"><option value="VIEWER">Chỉ xem</option><option value="OPERATOR">Vận hành</option><option value="ADMIN">Quản trị</option></select></label>
+              <button class="button primary" type="submit">Tạo tài khoản</button>
+              <p id="user-form-error" class="form-error"></p>
+            </form>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <dialog id="confirm-dialog" class="modal">
+      <form method="dialog">
+        <button class="modal-close" value="cancel" aria-label="Đóng">×</button>
+        <p class="section-kicker">XÁC NHẬN ĐIỀU KHIỂN</p>
+        <h2 id="confirm-title">Xác nhận lệnh</h2>
+        <p id="confirm-copy" class="muted"></p>
+        <div class="safety-note"><strong>Kiểm tra an toàn tại hiện trường</strong><span>ESP32 vẫn kiểm tra trạng thái và điều kiện liên động trước khi tác động MTS5.</span></div>
+        <div class="modal-actions"><button class="button ghost" value="cancel">Hủy</button><button id="confirm-submit" class="button danger" value="confirm">Xác nhận</button></div>
+      </form>
+    </dialog>
+
+    <dialog id="secret-dialog" class="modal">
+      <form method="dialog">
+        <button class="modal-close" value="close" aria-label="Đóng">×</button>
+        <p class="section-kicker">KHÓA THIẾT BỊ</p><h2>Lưu khóa ngay bây giờ</h2>
+        <p class="muted">Khóa chỉ hiển thị một lần. Dán vào <code>firmware/include/secrets.h</code>.</p>
+        <label>Mã thiết bị<input id="new-device-id" readonly /></label>
+        <label>Khóa API<textarea id="new-device-key" readonly rows="3"></textarea></label>
+        <button id="copy-secret" class="button primary wide" value="none" type="button">Sao chép cấu hình</button>
+      </form>
+    </dialog>
+
+    <div id="toast-region" class="toast-region" aria-live="polite"></div>
+  </body>
+</html>

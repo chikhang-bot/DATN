@@ -1,0 +1,9 @@
+node_modules/
+.wrangler/
+.dev.vars
+dist/
+coverage/
+firmware/include/secrets.h
+.DS_Store
+*.log
+preview-smart-cb.png

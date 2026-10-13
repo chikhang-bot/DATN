@@ -1,0 +1,225 @@
+openapi: 3.1.0
+info:
+  title: Smart CB API
+  version: 1.0.0
+  description: REST API for the Smart CB dashboard and ESP32-S3 polling client.
+servers:
+  - url: https://your-worker.workers.dev
+paths:
+  /api/health:
+    get:
+      summary: Health check
+      responses:
+        "200": { description: Healthy }
+  /api/auth/status:
+    get:
+      summary: Initialization and current-session status
+      responses:
+        "200": { description: Status }
+  /api/auth/setup:
+    post:
+      summary: Create the first administrator
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [setupToken, email, password, displayName]
+              properties:
+                setupToken: { type: string }
+                email: { type: string, format: email }
+                password: { type: string, minLength: 10, maxLength: 128 }
+                displayName: { type: string, minLength: 2, maxLength: 80 }
+      responses:
+        "201": { description: Administrator created }
+        "409": { description: Already initialized }
+  /api/auth/login:
+    post:
+      summary: Start a dashboard session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+      responses:
+        "200": { description: Authenticated; sets smart_cb_session cookie }
+        "401": { description: Invalid credentials }
+  /api/auth/logout:
+    post:
+      summary: End the dashboard session
+      responses:
+        "200": { description: Logged out }
+  /api/dashboard:
+    get:
+      summary: Get device snapshots and recent commands
+      security: [{ cookieSession: [] }]
+      responses:
+        "200": { description: Dashboard snapshot }
+  /api/devices:
+    get:
+      summary: List devices
+      security: [{ cookieSession: [] }]
+      responses:
+        "200": { description: Device list }
+    post:
+      summary: Register a device and return its key once
+      security: [{ cookieSession: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, minLength: 2, maxLength: 80 }
+                location: { type: string, maxLength: 160 }
+      responses:
+        "201": { description: Device and one-time API key }
+  /api/devices/{deviceId}/telemetry:
+    get:
+      summary: Read historical telemetry
+      security: [{ cookieSession: [] }]
+      parameters:
+        - { name: deviceId, in: path, required: true, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 500 } }
+        - { name: before, in: query, schema: { type: integer, description: Unix milliseconds } }
+      responses:
+        "200": { description: Telemetry rows }
+  /api/devices/{deviceId}/commands:
+    get:
+      summary: Read command history for one device
+      security: [{ cookieSession: [] }]
+      parameters:
+        - { name: deviceId, in: path, required: true, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 200 } }
+      responses:
+        "200": { description: Command rows }
+  /api/commands:
+    post:
+      summary: Queue an OPEN or CLOSE command
+      security: [{ cookieSession: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [deviceId, action]
+              properties:
+                deviceId: { type: string }
+                action: { type: string, enum: [OPEN, CLOSE] }
+                expiresInSeconds: { type: integer, minimum: 5, maximum: 300, default: 30 }
+      responses:
+        "201": { description: Command queued }
+        "409": { description: Device already in state or has an active command }
+  /api/device/telemetry:
+    post:
+      summary: Upload a sample from ESP32
+      security: [{ deviceId: [], deviceKey: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TelemetryInput" }
+      responses:
+        "202": { description: Sample accepted }
+  /api/device/commands/next:
+    get:
+      summary: Atomically claim the next non-expired command
+      security: [{ deviceId: [], deviceKey: [] }]
+      parameters:
+        - name: pollId
+          in: query
+          required: true
+          schema: { type: string, minLength: 8, maxLength: 100 }
+      responses:
+        "200": { description: Claimed command }
+        "204": { description: No command }
+  /api/device/commands/result:
+    post:
+      summary: Submit an idempotent command result
+      security: [{ deviceId: [], deviceKey: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [commandId, pollId, status, breakerState]
+              properties:
+                commandId: { type: string }
+                pollId: { type: string }
+                status: { type: string, enum: [SUCCEEDED, FAILED] }
+                breakerState: { $ref: "#/components/schemas/BreakerState" }
+                message: { type: string, maxLength: 500 }
+      responses:
+        "200": { description: Result accepted }
+        "409": { description: Command state or claim token conflict }
+components:
+  securitySchemes:
+    cookieSession:
+      type: apiKey
+      in: cookie
+      name: smart_cb_session
+    deviceId:
+      type: apiKey
+      in: header
+      name: X-Device-Id
+    deviceKey:
+      type: apiKey
+      in: header
+      name: X-Device-Key
+  schemas:
+    BreakerState:
+      type: string
+      enum: [OPEN, CLOSED, TRIPPED, UNKNOWN]
+    TelemetryInput:
+      type: object
+      required: [breakerState]
+      properties:
+        voltage: { type: [number, "null"] }
+        current: { type: [number, "null"] }
+        activePower: { type: [number, "null"] }
+        energyKwh: { type: [number, "null"] }
+        frequency: { type: [number, "null"] }
+        powerFactor: { type: [number, "null"] }
+        temperature: { type: [number, "null"] }
+        voltageA: { type: [number, "null"] }
+        voltageB: { type: [number, "null"] }
+        voltageC: { type: [number, "null"] }
+        voltageAB: { type: [number, "null"] }
+        voltageBC: { type: [number, "null"] }
+        voltageCA: { type: [number, "null"] }
+        currentA: { type: [number, "null"] }
+        currentB: { type: [number, "null"] }
+        currentC: { type: [number, "null"] }
+        neutralCurrent: { type: [number, "null"] }
+        activePowerA: { type: [number, "null"], description: Watts }
+        activePowerB: { type: [number, "null"], description: Watts }
+        activePowerC: { type: [number, "null"], description: Watts }
+        reactivePower: { type: [number, "null"], description: vars }
+        reactivePowerA: { type: [number, "null"], description: vars }
+        reactivePowerB: { type: [number, "null"], description: vars }
+        reactivePowerC: { type: [number, "null"], description: vars }
+        apparentPower: { type: [number, "null"], description: VA }
+        apparentPowerA: { type: [number, "null"], description: VA }
+        apparentPowerB: { type: [number, "null"], description: VA }
+        apparentPowerC: { type: [number, "null"], description: VA }
+        powerFactorA: { type: [number, "null"] }
+        powerFactorB: { type: [number, "null"] }
+        powerFactorC: { type: [number, "null"] }
+        phaseSequence: { type: [integer, "null"] }
+        mts5StatusRaw: { type: [integer, "null"], minimum: 0, maximum: 65535 }
+        pm3Connected: { type: boolean }
+        mts5Connected: { type: boolean }
+        remoteControlEnabled: { type: boolean }
+        breakerState: { $ref: "#/components/schemas/BreakerState" }
+        sampledAt: { type: integer, description: Unix milliseconds }
+        firmwareVersion: { type: string, maxLength: 80 }
